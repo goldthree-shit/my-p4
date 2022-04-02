@@ -19,7 +19,7 @@ from p4runtime_lib.switch import ShutdownAllSwitchConnections
 SWITCH_TO_HOST_PORT = 1
 SWITCH_TO_SWITCH_PORT = 2
 
-
+# 定义写隧道规则
 def writeTunnelRules(p4info_helper, ingress_sw, egress_sw, tunnel_id,
                      dst_eth_addr, dst_ip_addr):
     """
@@ -38,7 +38,7 @@ def writeTunnelRules(p4info_helper, ingress_sw, egress_sw, tunnel_id,
     :param dst_ip_addr: the destination Ethernet address to write in the
                         egress rule
     """
-    # 1) Tunnel Ingress Rule
+    # 1) 隧道入规则
     table_entry = p4info_helper.buildTableEntry(
         table_name="MyIngress.ipv4_lpm",
         match_fields={
@@ -71,11 +71,7 @@ def writeTunnelRules(p4info_helper, ingress_sw, egress_sw, tunnel_id,
     # TODO install the transit rule on the ingress switch
     print("TODO Install transit tunnel rule")
 
-    # 3) Tunnel Egress Rule
-    # For our simple topology, the host will always be located on the
-    # SWITCH_TO_HOST_PORT (port 1).
-    # In general, you will need to keep track of which port the host is
-    # connected to.
+    # 3) 隧道出规则
     table_entry = p4info_helper.buildTableEntry(
         table_name="MyIngress.myTunnel_exact",
         match_fields={
@@ -100,8 +96,6 @@ def readTableRules(p4info_helper, sw):
     for response in sw.ReadTableEntries():
         for entity in response.entities:
             entry = entity.table_entry
-            # TODO For extra credit, you can use the p4info_helper to translate
-            #      the IDs in the entry to names
             print(entry)
             print('-----')
 
