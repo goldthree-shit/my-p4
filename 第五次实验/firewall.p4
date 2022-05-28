@@ -108,7 +108,7 @@ parser MyParser(packet_in packet,
 ************   C H E C K S U M    V E R I F I C A T I O N   *************
 *************************************************************************/
 
-control MyVerifyChecksum(inout headers hdr, inout metadata meta) {   
+control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
     apply {  }
 }
 
@@ -154,7 +154,7 @@ control MyIngress(inout headers hdr,
         hdr.ethernet.dstAddr = dstAddr;
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
-    
+
     table ipv4_lpm {
         key = {
             hdr.ipv4.dstAddr: lpm;
@@ -184,7 +184,7 @@ control MyIngress(inout headers hdr,
         size = 1024;
         default_action = NoAction();
     }
-    
+
     apply {
         if (hdr.ipv4.isValid()){
             ipv4_lpm.apply();
@@ -199,20 +199,25 @@ control MyIngress(inout headers hdr,
                         compute_hashes(hdr.ipv4.dstAddr, hdr.ipv4.srcAddr, hdr.tcp.dstPort, hdr.tcp.srcPort);
                     }
                     // Packet comes from internal network
-                    if (direction == 0){
-                        // If there is a syn we update the bloom filter and add the entry
-                        if (hdr.tcp.syn == 1){
-                            bloom_filter_1.write(reg_pos_one, 1);
-                            bloom_filter_2.write(reg_pos_two, 1);
+                    if (direction == 0){//数据包由内部网络发出
+                        // TODO: this packet is part of an outgoing TCP connection.
+                        //   We need to set the bloom filter if this is a SYN packet
+                        //   E.g. bloom_filter_1.write(<index>, <value>);
+                        if(hdr.tcp.syn==1){//该数据包是由内部网络发出的tcp连接请求
+                            //将计算出的两个哈希值分别写入两个布隆过滤器
+                            bloom_filter_1.write(reg_pos_one,1);
+                            bloom_filter_2.write(reg_pos_two,1);
                         }
                     }
                     // Packet comes from outside
-                    else if (direction == 1){
-                        // Read bloom filter cells to check if there are 1's
-                        bloom_filter_1.read(reg_val_one, reg_pos_one);
-                        bloom_filter_2.read(reg_val_two, reg_pos_two);
-                        // only allow flow to pass if both entries are set
-                        if (reg_val_one != 1 || reg_val_two != 1){
+                    else if (direction == 1){//如果数据包来自外部网络
+                        // TODO: this packet is part of an incomming TCP connection.
+                        //   We need to check if this packet is allowed to pass by reading the bloom filter
+                        //   E.g. bloom_filter_1.read(<value>, <index>);
+                        //读取布隆过滤器中的值
+                        bloom_filter_1.read(reg_val_one,reg_pos_one);
+                        bloom_filter_2.read(reg_val_two,reg_pos_two);
+                        if(reg_val_one!=1||reg_val_two!=1){//如果不是1丢弃此包，是1就放行
                             drop();
                         }
                     }
@@ -238,10 +243,10 @@ control MyEgress(inout headers hdr,
 
 control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
      apply {
-	update_checksum(
-	    hdr.ipv4.isValid(),
+        update_checksum(
+            hdr.ipv4.isValid(),
             { hdr.ipv4.version,
-	      hdr.ipv4.ihl,
+              hdr.ipv4.ihl,
               hdr.ipv4.diffserv,
               hdr.ipv4.totalLen,
               hdr.ipv4.identification,
